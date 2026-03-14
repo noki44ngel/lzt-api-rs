@@ -10,15 +10,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Categories:");
     let categories = client.forum().categories_list(None, None, None).await?;
-    println!("  Total: {}", categories.categories_total);
+    println!("  Response: {:?}", categories);
 
     println!("\nForums:");
     let forums = client.forum().forums_list(None, None, None).await?;
-    println!("  Total: {}", forums.forums_total);
+    println!("  Response: {:?}", forums);
 
     println!("\nUser:");
     let user = client.forum().users_get(1, None).await?;
-    println!("  User ID: {}", user.user_id);
+    println!("  Response: {:?}", user);
 
     Ok(())
 }

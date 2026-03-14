@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = LolzteamClient::new(&token);
 
     let categories = client.forum().categories_list(None, None, None).await?;
-    println!("Categories: {}", categories.categories_total);
+    println!("Categories response: {:?}", categories);
 
     Ok(())
 }

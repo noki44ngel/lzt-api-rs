@@ -10,22 +10,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Search items:");
     let items = client.market().category_all(Default::default()).await?;
-    println!("  Total: {}", items.total_items);
+    println!("  Response: {:?}", items);
 
     println!("\nSteam items:");
     let steam = client.market().category_steam(Default::default()).await?;
-    println!("  Total: {}", steam.total_items);
+    println!("  Response: {:?}", steam);
 
-    println!("\nTags:");
-    let tags = client.market().tags_list(None).await?;
-    println!("  Total: {}", tags.total);
-
-    println!("\nStats:");
-    let stats = client.market().stats_get().await?;
-    println!(
-        "  Items: {}, Sold: {}, Views: {}",
-        stats.total_items, stats.total_sold, stats.total_views
-    );
+    println!("\nFavorites:");
+    let favs = client.market().list_favorites(Default::default()).await?;
+    println!("  Response: {:?}", favs);
 
     Ok(())
 }

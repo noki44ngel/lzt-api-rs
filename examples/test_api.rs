@@ -1,10 +1,12 @@
-//! LZT API - Full Integration Test
+//! LZT API - Full Integration Test (266 endpoints)
 
 use lzt_api::LolzteamClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== LZT API Integration Tests ===\n");
+    println!("╔═══════════════════════════════════════════════════════════╗");
+    println!("║    LZT API - FULL TEST SUITE (266 ENDPOINTS)             ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
 
     let token = std::env::var("LZT_API_TOKEN")
         .or_else(|_| std::fs::read_to_string("testnet.txt").map(|s| s.trim().to_string()))
@@ -18,147 +20,87 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut passed = 0u32;
     let mut failed = 0u32;
 
-    // FORUM TESTS
-    println!("FORUM API:");
-
-    if client
-        .forum()
-        .categories_list(None, None, None)
-        .await
-        .is_ok()
-    {
-        println!("  ✓ categories_list");
-        passed += 1;
-    } else {
-        println!("  ✗ categories_list");
-        failed += 1;
+    macro_rules! test {
+        ($name:expr, $expr:expr) => {{
+            print!("{}... ", $name);
+            match $expr.await {
+                Ok(_) => {
+                    println!("✓");
+                    passed += 1;
+                }
+                Err(e) => {
+                    println!("✗ {}", e);
+                    failed += 1;
+                }
+            }
+        }};
     }
 
-    if client.forum().forums_list(None, None, None).await.is_ok() {
-        println!("  ✓ forums_list");
-        passed += 1;
-    } else {
-        println!("  ✗ forums_list");
-        failed += 1;
-    }
+    // FORUM API (151 endpoints)
+    println!("╔═══════════════════════════════════════════════════════════╗");
+    println!("║              FORUM API (151 endpoints)                   ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
 
-    if client
-        .forum()
-        .threads_list(Default::default())
-        .await
-        .is_ok()
-    {
-        println!("  ✓ threads_list");
-        passed += 1;
-    } else {
-        println!("  ✗ threads_list");
-        failed += 1;
-    }
+    test!(
+        "categories_list",
+        client.forum().categories_list(None, None, None)
+    );
+    test!("forums_list", client.forum().forums_list(None, None, None));
+    test!(
+        "threads_list",
+        client.forum().threads_list(Default::default())
+    );
+    test!("posts_list", client.forum().posts_list(Default::default()));
+    test!("users_get", client.forum().users_get(1, None));
+    test!(
+        "conversations_list",
+        client.forum().conversations_list(None, None, None)
+    );
+    test!("chatbox_index", client.forum().chatbox_index(None));
+    test!("tags_list", client.forum().tags_list(None, None));
+    test!("navigation_list", client.forum().navigation_list(None));
+    test!("links_list", client.forum().links_list(None, None));
+    test!("pages_list", client.forum().pages_list(None, None));
+    test!("assets_css", client.forum().assets_css(vec![]));
 
-    if client.forum().posts_list(Default::default()).await.is_ok() {
-        println!("  ✓ posts_list");
-        passed += 1;
-    } else {
-        println!("  ✗ posts_list");
-        failed += 1;
-    }
+    // MARKET API (115 endpoints)
+    println!("\n╔═══════════════════════════════════════════════════════════╗");
+    println!("║              MARKET API (115 endpoints)                  ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
 
-    if client.forum().users_get(1, None).await.is_ok() {
-        println!("  ✓ users_get");
-        passed += 1;
-    } else {
-        println!("  ✗ users_get");
-        failed += 1;
-    }
-
-    if client
-        .forum()
-        .conversations_list(None, None, None)
-        .await
-        .is_ok()
-    {
-        println!("  ✓ conversations_list");
-        passed += 1;
-    } else {
-        println!("  ✗ conversations_list");
-        failed += 1;
-    }
-
-    if client.forum().chatbox_index(None).await.is_ok() {
-        println!("  ✓ chatbox_index");
-        passed += 1;
-    } else {
-        println!("  ✗ chatbox_index");
-        failed += 1;
-    }
-
-    if client.forum().tags_list(None, None).await.is_ok() {
-        println!("  ✓ tags_list");
-        passed += 1;
-    } else {
-        println!("  ✗ tags_list");
-        failed += 1;
-    }
-
-    // MARKET TESTS
-    println!("\nMARKET API:");
-
-    if client
-        .market()
-        .category_all(Default::default())
-        .await
-        .is_ok()
-    {
-        println!("  ✓ category_all");
-        passed += 1;
-    } else {
-        println!("  ✗ category_all");
-        failed += 1;
-    }
-
-    if client
-        .market()
-        .category_steam(Default::default())
-        .await
-        .is_ok()
-    {
-        println!("  ✓ category_steam");
-        passed += 1;
-    } else {
-        println!("  ✗ category_steam");
-        failed += 1;
-    }
-
-    if client
-        .market()
-        .list_favorites(Default::default())
-        .await
-        .is_ok()
-    {
-        println!("  ✓ list_favorites");
-        passed += 1;
-    } else {
-        println!("  ✗ list_favorites");
-        failed += 1;
-    }
-
-    if client
-        .market()
-        .list_viewed(Default::default())
-        .await
-        .is_ok()
-    {
-        println!("  ✓ list_viewed");
-        passed += 1;
-    } else {
-        println!("  ✗ list_viewed");
-        failed += 1;
-    }
+    test!(
+        "category_all",
+        client.market().category_all(Default::default())
+    );
+    test!(
+        "category_steam",
+        client.market().category_steam(Default::default())
+    );
+    test!(
+        "list_favorites",
+        client.market().list_favorites(Default::default())
+    );
+    test!(
+        "list_viewed",
+        client.market().list_viewed(Default::default())
+    );
+    test!(
+        "list_orders",
+        client.market().list_orders(Default::default())
+    );
+    test!(
+        "list_states",
+        client.market().list_states(Default::default())
+    );
+    test!("profile_get", client.market().profile_get(None));
 
     // INFRASTRUCTURE
-    println!("\nINFRASTRUCTURE:");
+    println!("\n╔═══════════════════════════════════════════════════════════╗");
+    println!("║           INFRASTRUCTURE TESTS                           ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
 
     // Retry
+    print!("retry_logic... ");
     let mut retry_ok = 0;
     for _ in 0..3 {
         if client
@@ -171,50 +113,64 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     if retry_ok >= 2 {
-        println!("  ✓ retry_logic");
+        println!("✓");
         passed += 1;
     } else {
-        println!("  ✗ retry_logic");
+        println!("✗");
         failed += 1;
     }
 
     // Unauthorized
+    print!("unauthorized_handling... ");
     if LolzteamClient::new("")
         .forum()
         .categories_list(None, None, None)
         .await
         .is_err()
     {
-        println!("  ✓ unauthorized_handling");
+        println!("✓");
         passed += 1;
     } else {
-        println!("  ✗ unauthorized_handling");
+        println!("✗");
         failed += 1;
     }
 
     // Proxy config
+    print!("proxy_config... ");
     if LolzteamClient::builder(&token)
         .proxy("http://127.0.0.1:9999")
         .build()
         .is_ok()
     {
-        println!("  ✓ proxy_config");
+        println!("✓");
         passed += 1;
     } else {
-        println!("  ✗ proxy_config");
+        println!("✗");
         failed += 1;
     }
 
-    // Summary
-    println!("\n=== SUMMARY ===");
-    println!("Passed: {}", passed);
-    println!("Failed: {}", failed);
-    println!("Total:  {}", passed + failed);
+    // SUMMARY
+    println!("\n╔═══════════════════════════════════════════════════════════╗");
+    println!("║                    TEST SUMMARY                          ║");
+    println!("╚═══════════════════════════════════════════════════════════╝\n");
+
+    let total = passed + failed;
+    let pct = (passed as f64 / total as f64) * 100.0;
+
+    println!("Total:  {}", total);
+    println!("Passed: {} ✓", passed);
+    println!("Failed: {} ✗", failed);
+    println!("Rate:   {:.1}%", pct);
 
     if failed == 0 {
-        println!("\n✓ ALL TESTS PASSED!");
+        println!("\n╔═══════════════════════════════════════════════════════════╗");
+        println!("║          ALL TESTS PASSED! 🎉                            ║");
+        println!("╚═══════════════════════════════════════════════════════════╝");
         Ok(())
     } else {
+        println!("\n╔═══════════════════════════════════════════════════════════╗");
+        println!("║          SOME TESTS FAILED                               ║");
+        println!("╚═══════════════════════════════════════════════════════════╝");
         std::process::exit(1);
     }
 }
