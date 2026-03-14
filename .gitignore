@@ -1,12 +1,23 @@
-target/
-*.rs.bk
+# Rust
+/target/
+**/target/
 Cargo.lock
-*.log
+
+# Test token (NEVER commit real tokens!)
+testnet.txt
+*.token
 .env
+
+# IDE
+.idea/
+.vscode/
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
-.idea/
-.vscode/
-*.orig
+Thumbs.db
+
+# Build
+*.rs.bk
