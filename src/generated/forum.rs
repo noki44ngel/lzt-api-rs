@@ -2,6 +2,8 @@ use crate::client::ForumClient;
 use crate::error::{ApiError, ApiResult};
 use serde_json::Value;
 
+// ==================== Response Types ====================
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct CategoriesResponse {
     pub categories: Vec<Category>,
@@ -129,6 +131,13 @@ pub struct PostsResponse {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct PostResponse {
+    pub post: Post,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_info: Option<SystemInfo>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Post {
     pub post_id: i64,
     pub user_id: i64,
@@ -222,7 +231,19 @@ pub struct SystemInfo {
     pub server_time: Option<i64>,
 }
 
-// Request types for POST/PUT
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+}
+
+// ==================== Request Types ====================
+
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct CreateThreadRequest {
     pub forum_id: i64,
@@ -244,15 +265,40 @@ pub struct UpdateUserRequest {
     pub email: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct PostResponse {
-    pub post: Post,
+#[derive(serde::Serialize, Debug, Clone)]
+pub struct OAuthTokenRequest {
+    pub grant_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
+    pub client_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_secret: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub redirect_uri: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub refresh_token: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<Vec<String>>,
 }
 
+// ==================== Forum API Client ====================
+
 impl ForumClient {
-    // GET methods
+    // ==================== OAuth ====================
+
+    pub async fn get_oauth_token(&self, request: &OAuthTokenRequest) -> ApiResult<TokenResponse> {
+        let builder = self.api().post("/oauth/token");
+        let builder = builder.json(request);
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Categories ====================
+
     pub async fn get_categories(&self) -> ApiResult<CategoriesResponse> {
         let builder = self.api().get("/categories");
         self.api().execute_json(builder).await
@@ -263,6 +309,8 @@ impl ForumClient {
         self.api().execute_json(builder).await
     }
 
+    // ==================== Forums ====================
+
     pub async fn get_forums(&self) -> ApiResult<ForumsResponse> {
         let builder = self.api().get("/forums");
         self.api().execute_json(builder).await
@@ -272,6 +320,18 @@ impl ForumClient {
         let builder = self.api().get(&format!("/forums/{}", forum_id));
         self.api().execute_json(builder).await
     }
+
+    pub async fn follow_forum(&self, forum_id: i64) -> ApiResult<Value> {
+        let builder = self.api().post(&format!("/forums/{}/follow", forum_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn unfollow_forum(&self, forum_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/forums/{}/follow", forum_id));
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Threads ====================
 
     pub async fn get_threads(
         &self,
@@ -291,6 +351,55 @@ impl ForumClient {
         self.api().execute_json(builder).await
     }
 
+    pub async fn create_thread(&self, request: &CreateThreadRequest) -> ApiResult<ThreadResponse> {
+        let builder = self.api().post("/threads");
+        let builder = builder.json(request);
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn edit_thread(&self, thread_id: i64, title: &str) -> ApiResult<ThreadResponse> {
+        let builder = self.api().put(&format!("/threads/{}", thread_id));
+        let builder = builder.json(&serde_json::json!({"title": title}));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn delete_thread(&self, thread_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/threads/{}", thread_id));
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
+    }
+
+    pub async fn bump_thread(&self, thread_id: i64) -> ApiResult<ThreadResponse> {
+        let builder = self.api().post(&format!("/threads/{}/bump", thread_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn star_thread(&self, thread_id: i64) -> ApiResult<Value> {
+        let builder = self.api().post(&format!("/threads/{}/star", thread_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn unstar_thread(&self, thread_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/threads/{}/star", thread_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn follow_thread(&self, thread_id: i64) -> ApiResult<Value> {
+        let builder = self.api().post(&format!("/threads/{}/follow", thread_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn unfollow_thread(&self, thread_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/threads/{}/follow", thread_id));
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Posts ====================
+
     pub async fn get_posts(&self, thread_id: i64, page: Option<i64>) -> ApiResult<PostsResponse> {
         let endpoint = match page {
             Some(p) => format!("/threads/{}/posts?page={}", thread_id, p),
@@ -299,6 +408,40 @@ impl ForumClient {
         let builder = self.api().get(&endpoint);
         self.api().execute_json(builder).await
     }
+
+    pub async fn create_post(&self, request: &CreatePostRequest) -> ApiResult<PostResponse> {
+        let builder = self.api().post("/posts");
+        let builder = builder.json(request);
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn edit_post(&self, post_id: i64, message: &str) -> ApiResult<PostResponse> {
+        let builder = self.api().put(&format!("/posts/{}", post_id));
+        let builder = builder.json(&serde_json::json!({"message": message}));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn delete_post(&self, post_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/posts/{}", post_id));
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
+    }
+
+    pub async fn like_post(&self, post_id: i64) -> ApiResult<Value> {
+        let builder = self.api().post(&format!("/posts/{}/like", post_id));
+        self.api().execute_json(builder).await
+    }
+
+    pub async fn unlike_post(&self, post_id: i64) -> ApiResult<Value> {
+        let builder = self.api().delete(&format!("/posts/{}/like", post_id));
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Users ====================
 
     pub async fn get_user(&self, user_id: i64) -> ApiResult<UserResponse> {
         let builder = self.api().get(&format!("/users/{}", user_id));
@@ -309,6 +452,18 @@ impl ForumClient {
         let builder = self.api().get("/users/me");
         self.api().execute_json(builder).await
     }
+
+    pub async fn update_user(
+        &self,
+        user_id: i64,
+        request: &UpdateUserRequest,
+    ) -> ApiResult<UserResponse> {
+        let builder = self.api().put(&format!("/users/{}", user_id));
+        let builder = builder.json(request);
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Conversations ====================
 
     pub async fn get_conversations(&self, page: Option<i64>) -> ApiResult<ConversationsResponse> {
         let endpoint = match page {
@@ -324,51 +479,6 @@ impl ForumClient {
             .api()
             .get(&format!("/conversations/{}", conversation_id));
         self.api().execute_json(builder).await
-    }
-
-    // POST methods
-    pub async fn create_thread(&self, request: &CreateThreadRequest) -> ApiResult<ThreadResponse> {
-        let builder = self.api().post("/threads");
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn create_post(&self, request: &CreatePostRequest) -> ApiResult<PostResponse> {
-        let builder = self.api().post("/posts");
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    // PUT methods
-    pub async fn update_user(
-        &self,
-        user_id: i64,
-        request: &UpdateUserRequest,
-    ) -> ApiResult<UserResponse> {
-        let builder = self.api().put(&format!("/users/{}", user_id));
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    // DELETE methods
-    pub async fn delete_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/threads/{}", thread_id));
-        self.api()
-            .execute(builder)
-            .await?
-            .json()
-            .await
-            .map_err(ApiError::from)
-    }
-
-    pub async fn delete_post(&self, post_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/posts/{}", post_id));
-        self.api()
-            .execute(builder)
-            .await?
-            .json()
-            .await
-            .map_err(ApiError::from)
     }
 
     pub async fn delete_conversation(&self, conversation_id: i64) -> ApiResult<Value> {

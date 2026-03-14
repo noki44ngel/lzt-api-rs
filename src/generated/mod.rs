@@ -6,9 +6,9 @@ pub use forum::{
     AvatarUrls as ForumAvatarUrls, CategoriesResponse, Category, CategoryLinks,
     CategoryPermissions, CategoryResponse, Conversation, ConversationLinks, ConversationResponse,
     ConversationsResponse, CreatePostRequest, CreateThreadRequest, Forum, ForumLinks,
-    ForumPermissions, ForumResponse, ForumsResponse, Post, PostLinks, PostResponse, PostsResponse,
-    SystemInfo, Thread, ThreadLinks, ThreadResponse, ThreadsResponse, UpdateUserRequest, User,
-    UserLinks, UserResponse,
+    ForumPermissions, ForumResponse, ForumsResponse, OAuthTokenRequest, Post, PostLinks,
+    PostResponse, PostsResponse, SystemInfo, Thread, ThreadLinks, ThreadResponse, ThreadsResponse,
+    TokenResponse, UpdateUserRequest, User, UserLinks, UserResponse,
 };
 
 pub use market::{
@@ -18,7 +18,8 @@ pub use market::{
 };
 
 pub use models::{
-    ApiSystemInfo, ErrorResponse, Link, Pagination, TokenRequest, TokenResponse, UserSummary,
+    ApiSystemInfo, ErrorResponse, Link, Pagination, TokenRequest,
+    TokenResponse as ModelTokenResponse, UserSummary,
 };
 
 pub use crate::client::{ForumClient, MarketClient};

@@ -2,6 +2,8 @@ use crate::client::MarketClient;
 use crate::error::{ApiError, ApiResult};
 use serde_json::Value;
 
+// ==================== Response Types ====================
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct ItemsResponse {
     pub items: Vec<ItemFromList>,
@@ -138,6 +140,8 @@ pub struct SystemInfo {
     pub server_time: Option<i64>,
 }
 
+// ==================== Request Types ====================
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Default)]
 pub struct SearchParams {
     pub page: Option<i64>,
@@ -149,7 +153,6 @@ pub struct SearchParams {
     pub origin: Option<String>,
 }
 
-// Request types for POST/PUT
 #[derive(serde::Serialize, Debug, Clone)]
 pub struct CreateItemRequest {
     pub category_id: i64,
@@ -174,8 +177,11 @@ pub struct BuyItemRequest {
     pub item_id: i64,
 }
 
+// ==================== Market API Client ====================
+
 impl MarketClient {
-    // GET methods
+    // ==================== Search Methods ====================
+
     pub async fn search_items(&self, params: Option<SearchParams>) -> ApiResult<ItemsResponse> {
         let mut endpoint = "/".to_string();
         if let Some(p) = params {
@@ -256,6 +262,8 @@ impl MarketClient {
         self.api().execute_json(builder).await
     }
 
+    // ==================== Tags & Stats ====================
+
     pub async fn get_tags(&self) -> ApiResult<TagsResponse> {
         let builder = self.api().get("/tags");
         self.api().execute_json(builder).await
@@ -266,19 +274,14 @@ impl MarketClient {
         self.api().execute_json(builder).await
     }
 
-    // POST methods
+    // ==================== CRUD Operations ====================
+
     pub async fn create_item(&self, request: &CreateItemRequest) -> ApiResult<ItemResponse> {
         let builder = self.api().post("/");
         let builder = builder.json(request);
         self.api().execute_json(builder).await
     }
 
-    pub async fn buy_item(&self, request: &BuyItemRequest) -> ApiResult<Value> {
-        let builder = self.api().post(&format!("/{}", request.item_id));
-        self.api().execute_json(builder).await
-    }
-
-    // PUT methods
     pub async fn update_item(
         &self,
         item_id: i64,
@@ -289,7 +292,6 @@ impl MarketClient {
         self.api().execute_json(builder).await
     }
 
-    // DELETE methods
     pub async fn delete_item(&self, item_id: i64) -> ApiResult<Value> {
         let builder = self.api().delete(&format!("/{}", item_id));
         self.api()
@@ -299,6 +301,13 @@ impl MarketClient {
             .await
             .map_err(ApiError::from)
     }
+
+    pub async fn buy_item(&self, request: &BuyItemRequest) -> ApiResult<Value> {
+        let builder = self.api().post(&format!("/{}", request.item_id));
+        self.api().execute_json(builder).await
+    }
+
+    // ==================== Helper Methods ====================
 
     fn build_query(params: &SearchParams) -> String {
         let mut query = String::from("?");
