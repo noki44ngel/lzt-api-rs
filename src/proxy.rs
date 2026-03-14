@@ -47,7 +47,8 @@ impl ProxyConfig {
             _ => Proxy::http(&self.url),
         };
 
-        let mut proxy = proxy.map_err(|e| ApiError::Configuration(format!("Invalid proxy: {}", e)))?;
+        let mut proxy =
+            proxy.map_err(|e| ApiError::Configuration(format!("Invalid proxy: {}", e)))?;
 
         if let (Some(username), Some(password)) = (&self.username, &self.password) {
             proxy = proxy.basic_auth(username, password);
@@ -136,8 +137,7 @@ mod tests {
 
     #[test]
     fn test_proxy_config_with_auth() {
-        let config = ProxyConfig::new("http://127.0.0.1:8080")
-            .with_auth("user", "pass");
+        let config = ProxyConfig::new("http://127.0.0.1:8080").with_auth("user", "pass");
         assert_eq!(config.username, Some("user".to_string()));
         assert_eq!(config.password, Some("pass".to_string()));
     }

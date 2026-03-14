@@ -112,7 +112,12 @@ pub fn should_retry(status: u16) -> bool {
 }
 
 /// Calculate delay with exponential backoff
-pub fn calculate_backoff(attempt: u32, base_delay: Duration, max_delay: Duration, multiplier: f64) -> Duration {
+pub fn calculate_backoff(
+    attempt: u32,
+    base_delay: Duration,
+    max_delay: Duration,
+    multiplier: f64,
+) -> Duration {
     let delay = base_delay.as_secs_f64() * multiplier.powi(attempt as i32);
     std::cmp::min(Duration::from_secs_f64(delay), max_delay)
 }
@@ -140,8 +145,17 @@ mod tests {
         let max = Duration::from_secs(30);
         let multiplier = 2.0;
 
-        assert_eq!(calculate_backoff(0, base, max, multiplier), Duration::from_millis(100));
-        assert_eq!(calculate_backoff(1, base, max, multiplier), Duration::from_millis(200));
-        assert_eq!(calculate_backoff(2, base, max, multiplier), Duration::from_millis(400));
+        assert_eq!(
+            calculate_backoff(0, base, max, multiplier),
+            Duration::from_millis(100)
+        );
+        assert_eq!(
+            calculate_backoff(1, base, max, multiplier),
+            Duration::from_millis(200)
+        );
+        assert_eq!(
+            calculate_backoff(2, base, max, multiplier),
+            Duration::from_millis(400)
+        );
     }
 }

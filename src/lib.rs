@@ -22,9 +22,9 @@ pub use proxy::ProxyConfig;
 pub use retry::RetryConfig;
 
 // Re-export generated types
-pub use generated::models::*;
 pub use generated::forum;
 pub use generated::market;
+pub use generated::models::*;
 
 // Library constants
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

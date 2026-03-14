@@ -8,10 +8,7 @@ pub enum ApiError {
     Network(#[from] reqwest::Error),
 
     #[error("HTTP error: {status} - {message}")]
-    Http {
-        status: StatusCode,
-        message: String,
-    },
+    Http { status: StatusCode, message: String },
 
     #[error("Deserialization error: {0}")]
     Deserialization(#[from] serde_json::Error),
@@ -32,10 +29,7 @@ pub enum ApiError {
     BadRequest(String),
 
     #[error("Server error: {status} - {message}")]
-    ServerError {
-        status: StatusCode,
-        message: String,
-    },
+    ServerError { status: StatusCode, message: String },
 
     #[error("Invalid configuration: {0}")]
     Configuration(String),
@@ -50,10 +44,7 @@ pub enum ApiError {
     InvalidUrl(String),
 
     #[error("API error: {code} - {message}")]
-    Api {
-        code: String,
-        message: String,
-    },
+    Api { code: String, message: String },
 }
 
 impl ApiError {

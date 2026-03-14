@@ -42,9 +42,7 @@ impl ClientBuilder {
         username: impl Into<String>,
         password: impl Into<String>,
     ) -> Self {
-        self.proxy = Some(
-            ProxyConfig::new(proxy_url).with_auth(username, password),
-        );
+        self.proxy = Some(ProxyConfig::new(proxy_url).with_auth(username, password));
         self
     }
 
@@ -85,9 +83,7 @@ impl ClientBuilder {
             client_builder = client_builder.timeout(timeout);
         }
 
-        let client = client_builder
-            .build()
-            .map_err(ApiError::Network)?;
+        let client = client_builder.build().map_err(ApiError::Network)?;
 
         Ok(ApiClient {
             client,
@@ -172,9 +168,9 @@ impl ApiClient {
 
         retry_executor
             .execute(|| async {
-                let request = builder
-                    .try_clone()
-                    .ok_or_else(|| ApiError::Configuration("Request cannot be cloned".to_string()))?;
+                let request = builder.try_clone().ok_or_else(|| {
+                    ApiError::Configuration("Request cannot be cloned".to_string())
+                })?;
 
                 let response = request.send().await.map_err(ApiError::from)?;
                 self.handle_response(response).await

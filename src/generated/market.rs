@@ -235,7 +235,10 @@ impl MarketClient {
         self.api().execute_json(builder).await
     }
 
-    pub async fn search_socialclub(&self, params: Option<SearchParams>) -> ApiResult<ItemsResponse> {
+    pub async fn search_socialclub(
+        &self,
+        params: Option<SearchParams>,
+    ) -> ApiResult<ItemsResponse> {
         let mut endpoint = "/socialclub".to_string();
         if let Some(p) = params {
             endpoint.push_str(&Self::build_query(&p));
@@ -276,7 +279,11 @@ impl MarketClient {
     }
 
     // PUT methods
-    pub async fn update_item(&self, item_id: i64, request: &UpdateItemRequest) -> ApiResult<ItemResponse> {
+    pub async fn update_item(
+        &self,
+        item_id: i64,
+        request: &UpdateItemRequest,
+    ) -> ApiResult<ItemResponse> {
         let builder = self.api().put(&format!("/{}", item_id));
         let builder = builder.json(request);
         self.api().execute_json(builder).await
@@ -285,7 +292,12 @@ impl MarketClient {
     // DELETE methods
     pub async fn delete_item(&self, item_id: i64) -> ApiResult<Value> {
         let builder = self.api().delete(&format!("/{}", item_id));
-        self.api().execute(builder).await?.json().await.map_err(ApiError::from)
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
     }
 
     fn build_query(params: &SearchParams) -> String {

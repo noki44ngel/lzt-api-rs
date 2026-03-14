@@ -36,11 +36,10 @@ fn main() {
 
 fn generate_api_code(schema_path: &Path, output_dir: &Path, api_name: &str) {
     // Read the OpenAPI schema
-    let content = fs::read_to_string(schema_path)
-        .unwrap_or_else(|e| {
-            println!("cargo:warning=Failed to read schema: {}", e);
-            String::new()
-        });
+    let content = fs::read_to_string(schema_path).unwrap_or_else(|e| {
+        println!("cargo:warning=Failed to read schema: {}", e);
+        String::new()
+    });
 
     if content.is_empty() {
         return;
@@ -66,7 +65,10 @@ fn generate_models(schema: &serde_json::Value, output_dir: &Path, api_name: &str
     models.push_str("use serde::{Deserialize, Serialize};\n\n");
 
     // Extract schemas from components
-    if let Some(components) = schema.get("components").and_then(|c: &serde_json::Value| c.get("schemas")) {
+    if let Some(components) = schema
+        .get("components")
+        .and_then(|c: &serde_json::Value| c.get("schemas"))
+    {
         if let Some(obj) = components.as_object() {
             for (name, def) in obj {
                 models.push_str(&generate_model_struct(name, def));
@@ -82,15 +84,14 @@ fn generate_model_struct(name: &str, def: &serde_json::Value) -> String {
     let struct_name = to_pascal_case(name);
     let mut fields = String::new();
 
-    if let Some(obj) = def.get("properties").and_then(|p: &serde_json::Value| p.as_object()) {
+    if let Some(obj) = def
+        .get("properties")
+        .and_then(|p: &serde_json::Value| p.as_object())
+    {
         let required: Vec<&str> = def
             .get("required")
             .and_then(|r: &serde_json::Value| r.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|v| v.as_str())
-                    .collect::<Vec<_>>()
-            })
+            .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
             .unwrap_or_default();
 
         for (prop_name, prop_def) in obj {
@@ -102,7 +103,10 @@ fn generate_model_struct(name: &str, def: &serde_json::Value) -> String {
                 fields.push_str(&format!("    pub {}: {},\n", field_name, field_type));
             } else {
                 fields.push_str("    #[serde(skip_serializing_if = \"Option::is_none\")]\n");
-                fields.push_str(&format!("    pub {}: Option<{}>,\n", field_name, field_type));
+                fields.push_str(&format!(
+                    "    pub {}: Option<{}>,\n",
+                    field_name, field_type
+                ));
             }
         }
     }

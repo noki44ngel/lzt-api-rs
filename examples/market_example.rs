@@ -1,5 +1,5 @@
-use lzt_api::{ApiClient, ApiResult, MarketClient};
 use lzt_api::market::SearchParams;
+use lzt_api::{ApiClient, ApiResult, MarketClient};
 
 #[tokio::main]
 async fn main() -> ApiResult<()> {
@@ -28,9 +28,15 @@ async fn main() -> ApiResult<()> {
 
     match market.search_items(Some(params)).await {
         Ok(response) => {
-            println!("Total items: {} (page {})", response.total_items, response.page);
+            println!(
+                "Total items: {} (page {})",
+                response.total_items, response.page
+            );
             for item in response.items.iter().take(5) {
-                println!("  - {} - {} RUB (views: {})", item.title, item.price, item.view_count);
+                println!(
+                    "  - {} - {} RUB (views: {})",
+                    item.title, item.price, item.view_count
+                );
             }
         }
         Err(e) => eprintln!("Error searching items: {}", e),

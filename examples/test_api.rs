@@ -1,12 +1,12 @@
-use lzt_api::{ApiClient, ApiError, ApiResult, ForumClient, MarketClient};
 use lzt_api::market::SearchParams;
+use lzt_api::{ApiClient, ApiError, ApiResult, ForumClient, MarketClient};
 
 #[tokio::main]
 async fn main() -> ApiResult<()> {
     env_logger::init();
 
-    let token = std::env::var("LZT_API_TOKEN")
-        .expect("LZT_API_TOKEN environment variable must be set");
+    let token =
+        std::env::var("LZT_API_TOKEN").expect("LZT_API_TOKEN environment variable must be set");
 
     println!("=== LZT API Integration Tests ===\n");
 
@@ -37,7 +37,10 @@ async fn main() -> ApiResult<()> {
     // Test 3: Get current user
     println!("Test 3: Fetching current user...");
     match forum.get_me().await {
-        Ok(response) => println!("  ✓ Success: {} (ID: {})", response.user.username, response.user.user_id),
+        Ok(response) => println!(
+            "  ✓ Success: {} (ID: {})",
+            response.user.username, response.user.user_id
+        ),
         Err(e) => println!("  ✗ Error: {}", e),
     }
 
@@ -60,7 +63,10 @@ async fn main() -> ApiResult<()> {
         ..Default::default()
     };
     match market.search_items(Some(params)).await {
-        Ok(response) => println!("  ✓ Success: {} items (page {})", response.total_items, response.page),
+        Ok(response) => println!(
+            "  ✓ Success: {} items (page {})",
+            response.total_items, response.page
+        ),
         Err(e) => println!("  ✗ Error: {}", e),
     }
 
@@ -88,7 +94,7 @@ async fn main() -> ApiResult<()> {
     let no_auth_client = ApiClient::builder()
         .base_url("https://api.lolz.live")
         .build()?;
-    
+
     let no_auth_forum = ForumClient::new(no_auth_client);
     match no_auth_forum.get_categories().await {
         Ok(_) => println!("  ✗ Expected unauthorized error"),

@@ -21,7 +21,10 @@ async fn main() -> ApiResult<()> {
         Ok(response) => {
             println!("Total categories: {}", response.categories_total);
             for category in response.categories.iter().take(5) {
-                println!("  - {} (ID: {})", category.category_title, category.category_id);
+                println!(
+                    "  - {} (ID: {})",
+                    category.category_title, category.category_id
+                );
             }
         }
         Err(e) => eprintln!("Error fetching categories: {}", e),
@@ -40,7 +43,10 @@ async fn main() -> ApiResult<()> {
 
     println!("\nFetching current user...");
     match forum.get_me().await {
-        Ok(response) => println!("Logged in as: {} (ID: {})", response.user.username, response.user.user_id),
+        Ok(response) => println!(
+            "Logged in as: {} (ID: {})",
+            response.user.username, response.user.user_id
+        ),
         Err(e) => eprintln!("Error fetching user: {}", e),
     }
 

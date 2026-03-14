@@ -273,7 +273,11 @@ impl ForumClient {
         self.api().execute_json(builder).await
     }
 
-    pub async fn get_threads(&self, forum_id: i64, page: Option<i64>) -> ApiResult<ThreadsResponse> {
+    pub async fn get_threads(
+        &self,
+        forum_id: i64,
+        page: Option<i64>,
+    ) -> ApiResult<ThreadsResponse> {
         let endpoint = match page {
             Some(p) => format!("/forums/{}/threads?page={}", forum_id, p),
             None => format!("/forums/{}/threads", forum_id),
@@ -316,7 +320,9 @@ impl ForumClient {
     }
 
     pub async fn get_conversation(&self, conversation_id: i64) -> ApiResult<ConversationResponse> {
-        let builder = self.api().get(&format!("/conversations/{}", conversation_id));
+        let builder = self
+            .api()
+            .get(&format!("/conversations/{}", conversation_id));
         self.api().execute_json(builder).await
     }
 
@@ -334,7 +340,11 @@ impl ForumClient {
     }
 
     // PUT methods
-    pub async fn update_user(&self, user_id: i64, request: &UpdateUserRequest) -> ApiResult<UserResponse> {
+    pub async fn update_user(
+        &self,
+        user_id: i64,
+        request: &UpdateUserRequest,
+    ) -> ApiResult<UserResponse> {
         let builder = self.api().put(&format!("/users/{}", user_id));
         let builder = builder.json(request);
         self.api().execute_json(builder).await
@@ -343,16 +353,33 @@ impl ForumClient {
     // DELETE methods
     pub async fn delete_thread(&self, thread_id: i64) -> ApiResult<Value> {
         let builder = self.api().delete(&format!("/threads/{}", thread_id));
-        self.api().execute(builder).await?.json().await.map_err(ApiError::from)
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
     }
 
     pub async fn delete_post(&self, post_id: i64) -> ApiResult<Value> {
         let builder = self.api().delete(&format!("/posts/{}", post_id));
-        self.api().execute(builder).await?.json().await.map_err(ApiError::from)
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
     }
 
     pub async fn delete_conversation(&self, conversation_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/conversations/{}", conversation_id));
-        self.api().execute(builder).await?.json().await.map_err(ApiError::from)
+        let builder = self
+            .api()
+            .delete(&format!("/conversations/{}", conversation_id));
+        self.api()
+            .execute(builder)
+            .await?
+            .json()
+            .await
+            .map_err(ApiError::from)
     }
 }
