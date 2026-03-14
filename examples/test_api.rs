@@ -59,9 +59,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     test!("chatbox_index", client.forum().chatbox_index(None));
     test!("tags_list", client.forum().tags_list(None, None));
     test!("navigation_list", client.forum().navigation_list(None));
-    test!("links_list", client.forum().links_list(None, None));
+    test!("links_list", client.forum().links_list());
     test!("pages_list", client.forum().pages_list(None, None));
-    test!("assets_css", client.forum().assets_css(vec![]));
+    test!("assets_css", client.forum().assets_css(vec![].into()));
 
     // MARKET API (115 endpoints)
     println!("\n╔═══════════════════════════════════════════════════════════╗");
