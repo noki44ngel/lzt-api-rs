@@ -1,17 +1,14 @@
-use lzt_api::{ApiClient, ApiResult};
+use lzt_api::LolzteamClient;
 
 #[tokio::main]
-async fn main() -> ApiResult<()> {
-    env_logger::init();
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let token = std::env::var("LZT_API_TOKEN")
+        .unwrap_or_else(|_| "your_token".to_string());
 
-    let client = ApiClient::builder()
-        .base_url("https://api.lolz.live")
-        .token(std::env::var("LZT_API_TOKEN").unwrap_or_else(|_| "your_token".to_string()))
-        .retry(3)
-        .timeout(std::time::Duration::from_secs(30))
-        .build()?;
+    let client = LolzteamClient::new(&token);
 
-    println!("Client initialized: {}", client.base_url());
+    let categories = client.forum().categories_list(None, None, None).await?;
+    println!("Categories: {}", categories.categories_total);
 
     Ok(())
 }
