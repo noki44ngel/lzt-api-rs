@@ -153,6 +153,7 @@ impl ApiClient {
                 StatusCode::TOO_MANY_REQUESTS
                     | StatusCode::BAD_GATEWAY
                     | StatusCode::SERVICE_UNAVAILABLE
+                    | StatusCode::INTERNAL_SERVER_ERROR
             ) {
                 if attempt < self.max_retries {
                     let retry_after = resp
