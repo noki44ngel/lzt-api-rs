@@ -1,12 +1,12 @@
-//! # lolzteam
+//! # lzt-api
 //!
-//! Rust-клиент для LOLZTEAM Forum & Market API.
-//! Методы и типы сгенерированы из OpenAPI-спеки.
+//! Rust client for LOLZTEAM Forum & Market API.
+//! Methods and types generated from OpenAPI specs.
 //!
-//! ## Быстрый старт
+//! ## Quick Start
 //!
 //! ```rust,no_run
-//! use lolzteam::LolzteamClient;
+//! use lzt_api::LolzteamClient;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,17 +15,17 @@
 //!     let user = client.forum().users_get(1, None).await?;
 //!     println!("{:?}", user);
 //!
-//!     let cats = client.market().category_list(None).await?;
+//!     let cats = client.market().category_all(Default::default()).await?;
 //!     println!("{:?}", cats);
 //!
 //!     Ok(())
 //! }
 //! ```
 //!
-//! ## Прокси
+//! ## Proxy
 //!
 //! ```rust,no_run
-//! use lolzteam::LolzteamClient;
+//! use lzt_api::LolzteamClient;
 //!
 //! let client = LolzteamClient::builder("YOUR_TOKEN")
 //!     .forum_proxy("socks5://127.0.0.1:1080")
