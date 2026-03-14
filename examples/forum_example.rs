@@ -3,51 +3,28 @@ use lzt_api::{ApiClient, ApiResult, ForumClient};
 #[tokio::main]
 async fn main() -> ApiResult<()> {
     env_logger::init();
-
     let token = std::env::var("LZT_API_TOKEN").unwrap_or_else(|_| "your_token".to_string());
-
-    let client = ApiClient::builder()
-        .base_url("https://api.lolz.live")
-        .token(&token)
-        .retry(3)
-        .build()?;
-
+    let client = ApiClient::builder().base_url("https://api.lolz.live").token(&token).retry(3).build()?;
     let forum = ForumClient::new(client);
 
-    println!("=== Forum API Demo ===\n");
-
-    println!("Fetching categories...");
+    println!("=== Forum API ===\n");
+    
+    println!("Categories:");
     match forum.get_categories().await {
-        Ok(response) => {
-            println!("Total categories: {}", response.categories_total);
-            for category in response.categories.iter().take(5) {
-                println!(
-                    "  - {} (ID: {})",
-                    category.category_title, category.category_id
-                );
-            }
-        }
-        Err(e) => eprintln!("Error fetching categories: {}", e),
+        Ok(r) => println!("  Total: {}", r.categories_total),
+        Err(e) => eprintln!("  Error: {}", e),
     }
 
-    println!("\nFetching forums...");
+    println!("\nForums:");
     match forum.get_forums().await {
-        Ok(response) => {
-            println!("Total forums: {}", response.forums_total);
-            for forum in response.forums.iter().take(5) {
-                println!("  - {} (ID: {})", forum.forum_title, forum.forum_id);
-            }
-        }
-        Err(e) => eprintln!("Error fetching forums: {}", e),
+        Ok(r) => println!("  Total: {}", r.forums_total),
+        Err(e) => eprintln!("  Error: {}", e),
     }
 
-    println!("\nFetching current user...");
+    println!("\nCurrent user:");
     match forum.get_me().await {
-        Ok(response) => println!(
-            "Logged in as: {} (ID: {})",
-            response.user.username, response.user.user_id
-        ),
-        Err(e) => eprintln!("Error fetching user: {}", e),
+        Ok(r) => println!("  User: {:?}", r.user.get("username").unwrap_or(&serde_json::Value::String("unknown".to_string()))),
+        Err(e) => eprintln!("  Error: {}", e),
     }
 
     Ok(())

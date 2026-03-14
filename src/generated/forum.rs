@@ -1,495 +1,57 @@
 use crate::client::ForumClient;
 use crate::error::{ApiError, ApiResult};
+use serde::{Serialize, Deserialize};
 use serde_json::Value;
 
-// ==================== Response Types ====================
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct CategoriesResponse {
-    pub categories: Vec<Category>,
-    pub categories_total: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct CategoryResponse {
-    pub category: Category,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Category {
-    pub category_id: i64,
-    pub category_title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub category_description: Option<String>,
-    pub links: CategoryLinks,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub permissions: Option<CategoryPermissions>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct CategoryLinks {
-    pub permalink: String,
-    pub detail: String,
-    #[serde(rename = "sub-categories")]
-    pub sub_categories: String,
-    #[serde(rename = "sub-forums")]
-    pub sub_forums: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct CategoryPermissions {
-    pub view: bool,
-    pub edit: bool,
-    pub delete: bool,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ForumsResponse {
-    pub forums: Vec<Forum>,
-    pub forums_total: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ForumResponse {
-    pub forum: Forum,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Forum {
-    pub forum_id: i64,
-    pub forum_title: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub forum_description: Option<String>,
-    pub links: ForumLinks,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub permissions: Option<ForumPermissions>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ForumLinks {
-    pub permalink: String,
-    pub detail: String,
-    pub threads: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ForumPermissions {
-    pub view: bool,
-    pub edit: bool,
-    pub delete: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub post: Option<bool>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ThreadsResponse {
-    pub threads: Vec<Thread>,
-    pub threads_total: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ThreadResponse {
-    pub thread: Thread,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Thread {
-    pub thread_id: i64,
-    pub title: String,
-    pub user_id: i64,
-    pub username: String,
-    pub reply_count: i64,
-    pub view_count: i64,
-    pub links: ThreadLinks,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ThreadLinks {
-    pub permalink: String,
-    pub detail: String,
-    pub posts: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct PostsResponse {
-    pub posts: Vec<Post>,
-    pub posts_total: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct PostResponse {
-    pub post: Post,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Post {
-    pub post_id: i64,
-    pub user_id: i64,
-    pub username: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub message: Option<String>,
-    pub post_date: i64,
-    pub links: PostLinks,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct PostLinks {
-    pub permalink: String,
-    pub detail: String,
-    pub user: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct UserResponse {
-    pub user: User,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct User {
-    pub user_id: i64,
-    pub username: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar_urls: Option<AvatarUrls>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub user_group_id: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub register_date: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_activity_date: Option<i64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub links: Option<UserLinks>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct AvatarUrls {
-    pub small: String,
-    pub medium: String,
-    pub large: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct UserLinks {
-    pub permalink: String,
-    pub detail: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ConversationsResponse {
-    pub conversations: Vec<Conversation>,
-    pub conversations_total: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ConversationResponse {
-    pub conversation: Conversation,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub system_info: Option<SystemInfo>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Conversation {
-    pub conversation_id: i64,
-    pub title: String,
-    pub starter_user_id: i64,
-    pub reply_count: i64,
-    pub last_message_date: i64,
-    pub links: ConversationLinks,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct ConversationLinks {
-    pub permalink: String,
-    pub detail: String,
-    pub messages: String,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct SystemInfo {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub api_version: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub server_time: Option<i64>,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct TokenResponse {
-    pub access_token: String,
-    pub token_type: String,
-    pub expires_in: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scope: Option<String>,
-}
-
-// ==================== Request Types ====================
-
-#[derive(serde::Serialize, Debug, Clone)]
-pub struct CreateThreadRequest {
-    pub forum_id: i64,
-    pub title: String,
-    pub message: String,
-}
-
-#[derive(serde::Serialize, Debug, Clone)]
-pub struct CreatePostRequest {
-    pub thread_id: i64,
-    pub message: String,
-}
-
-#[derive(serde::Serialize, Debug, Clone)]
-pub struct UpdateUserRequest {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub email: Option<String>,
-}
-
-#[derive(serde::Serialize, Debug, Clone)]
-pub struct OAuthTokenRequest {
-    pub grant_type: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub client_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub client_secret: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub redirect_uri: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub refresh_token: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub username: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub password: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scope: Option<Vec<String>>,
-}
-
-// ==================== Forum API Client ====================
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoriesResponse { pub categories: Vec<Value>, pub categories_total: i64, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct CategoryResponse { pub category: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ForumsResponse { pub forums: Vec<Value>, pub forums_total: i64, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ForumResponse { pub forum: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ThreadsResponse { pub threads: Vec<Value>, pub threads_total: i64, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ThreadResponse { pub thread: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PostsResponse { pub posts: Vec<Value>, pub posts_total: i64, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PostResponse { pub post: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UserResponse { pub user: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ConversationsResponse { pub conversations: Vec<Value>, pub conversations_total: i64, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ConversationResponse { pub conversation: Value, #[serde(skip_serializing_if = "Option::is_none")] pub system_info: Option<Value> }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct TokenResponse { pub access_token: String, pub token_type: String, pub expires_in: i64, #[serde(skip_serializing_if = "Option::is_none")] pub refresh_token: Option<String>, #[serde(skip_serializing_if = "Option::is_none")] pub scope: Option<String> }
 
 impl ForumClient {
-    // ==================== OAuth ====================
-
-    pub async fn get_oauth_token(&self, request: &OAuthTokenRequest) -> ApiResult<TokenResponse> {
-        let builder = self.api().post("/oauth/token");
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Categories ====================
-
-    pub async fn get_categories(&self) -> ApiResult<CategoriesResponse> {
-        let builder = self.api().get("/categories");
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn get_category(&self, category_id: i64) -> ApiResult<CategoryResponse> {
-        let builder = self.api().get(&format!("/categories/{}", category_id));
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Forums ====================
-
-    pub async fn get_forums(&self) -> ApiResult<ForumsResponse> {
-        let builder = self.api().get("/forums");
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn get_forum(&self, forum_id: i64) -> ApiResult<ForumResponse> {
-        let builder = self.api().get(&format!("/forums/{}", forum_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn follow_forum(&self, forum_id: i64) -> ApiResult<Value> {
-        let builder = self.api().post(&format!("/forums/{}/follow", forum_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn unfollow_forum(&self, forum_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/forums/{}/follow", forum_id));
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Threads ====================
-
-    pub async fn get_threads(
-        &self,
-        forum_id: i64,
-        page: Option<i64>,
-    ) -> ApiResult<ThreadsResponse> {
-        let endpoint = match page {
-            Some(p) => format!("/forums/{}/threads?page={}", forum_id, p),
-            None => format!("/forums/{}/threads", forum_id),
-        };
-        let builder = self.api().get(&endpoint);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn get_thread(&self, thread_id: i64) -> ApiResult<ThreadResponse> {
-        let builder = self.api().get(&format!("/threads/{}", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn create_thread(&self, request: &CreateThreadRequest) -> ApiResult<ThreadResponse> {
-        let builder = self.api().post("/threads");
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn edit_thread(&self, thread_id: i64, title: &str) -> ApiResult<ThreadResponse> {
-        let builder = self.api().put(&format!("/threads/{}", thread_id));
-        let builder = builder.json(&serde_json::json!({"title": title}));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn delete_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/threads/{}", thread_id));
-        self.api()
-            .execute(builder)
-            .await?
-            .json()
-            .await
-            .map_err(ApiError::from)
-    }
-
-    pub async fn bump_thread(&self, thread_id: i64) -> ApiResult<ThreadResponse> {
-        let builder = self.api().post(&format!("/threads/{}/bump", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn star_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().post(&format!("/threads/{}/star", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn unstar_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/threads/{}/star", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn follow_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().post(&format!("/threads/{}/follow", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn unfollow_thread(&self, thread_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/threads/{}/follow", thread_id));
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Posts ====================
-
-    pub async fn get_posts(&self, thread_id: i64, page: Option<i64>) -> ApiResult<PostsResponse> {
-        let endpoint = match page {
-            Some(p) => format!("/threads/{}/posts?page={}", thread_id, p),
-            None => format!("/threads/{}/posts", thread_id),
-        };
-        let builder = self.api().get(&endpoint);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn create_post(&self, request: &CreatePostRequest) -> ApiResult<PostResponse> {
-        let builder = self.api().post("/posts");
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn edit_post(&self, post_id: i64, message: &str) -> ApiResult<PostResponse> {
-        let builder = self.api().put(&format!("/posts/{}", post_id));
-        let builder = builder.json(&serde_json::json!({"message": message}));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn delete_post(&self, post_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/posts/{}", post_id));
-        self.api()
-            .execute(builder)
-            .await?
-            .json()
-            .await
-            .map_err(ApiError::from)
-    }
-
-    pub async fn like_post(&self, post_id: i64) -> ApiResult<Value> {
-        let builder = self.api().post(&format!("/posts/{}/like", post_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn unlike_post(&self, post_id: i64) -> ApiResult<Value> {
-        let builder = self.api().delete(&format!("/posts/{}/like", post_id));
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Users ====================
-
-    pub async fn get_user(&self, user_id: i64) -> ApiResult<UserResponse> {
-        let builder = self.api().get(&format!("/users/{}", user_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn get_me(&self) -> ApiResult<UserResponse> {
-        let builder = self.api().get("/users/me");
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn update_user(
-        &self,
-        user_id: i64,
-        request: &UpdateUserRequest,
-    ) -> ApiResult<UserResponse> {
-        let builder = self.api().put(&format!("/users/{}", user_id));
-        let builder = builder.json(request);
-        self.api().execute_json(builder).await
-    }
-
-    // ==================== Conversations ====================
-
-    pub async fn get_conversations(&self, page: Option<i64>) -> ApiResult<ConversationsResponse> {
-        let endpoint = match page {
-            Some(p) => format!("/conversations?page={}", p),
-            None => "/conversations".to_string(),
-        };
-        let builder = self.api().get(&endpoint);
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn get_conversation(&self, conversation_id: i64) -> ApiResult<ConversationResponse> {
-        let builder = self
-            .api()
-            .get(&format!("/conversations/{}", conversation_id));
-        self.api().execute_json(builder).await
-    }
-
-    pub async fn delete_conversation(&self, conversation_id: i64) -> ApiResult<Value> {
-        let builder = self
-            .api()
-            .delete(&format!("/conversations/{}", conversation_id));
-        self.api()
-            .execute(builder)
-            .await?
-            .json()
-            .await
-            .map_err(ApiError::from)
-    }
+    pub async fn get_categories(&self) -> ApiResult<CategoriesResponse> { self.api().execute_json(self.api().get("/categories")).await }
+    pub async fn get_category(&self, category_id: i64) -> ApiResult<CategoryResponse> { self.api().execute_json(self.api().get(&format!("/categories/{}", category_id))).await }
+    pub async fn get_forums(&self) -> ApiResult<ForumsResponse> { self.api().execute_json(self.api().get("/forums")).await }
+    pub async fn get_forum(&self, forum_id: i64) -> ApiResult<ForumResponse> { self.api().execute_json(self.api().get(&format!("/forums/{}", forum_id))).await }
+    pub async fn get_threads(&self, forum_id: i64, page: Option<i64>) -> ApiResult<ThreadsResponse> { let ep = match page { Some(p) => format!("/forums/{}/threads?page={}", forum_id, p), None => format!("/forums/{}/threads", forum_id) }; self.api().execute_json(self.api().get(&ep)).await }
+    pub async fn get_thread(&self, thread_id: i64) -> ApiResult<ThreadResponse> { self.api().execute_json(self.api().get(&format!("/threads/{}", thread_id))).await }
+    pub async fn get_posts(&self, thread_id: i64, page: Option<i64>) -> ApiResult<PostsResponse> { let ep = match page { Some(p) => format!("/threads/{}/posts?page={}", thread_id, p), None => format!("/threads/{}/posts", thread_id) }; self.api().execute_json(self.api().get(&ep)).await }
+    pub async fn get_user(&self, user_id: i64) -> ApiResult<UserResponse> { self.api().execute_json(self.api().get(&format!("/users/{}", user_id))).await }
+    pub async fn get_me(&self) -> ApiResult<UserResponse> { self.api().execute_json(self.api().get("/users/me")).await }
+    pub async fn get_conversations(&self, page: Option<i64>) -> ApiResult<ConversationsResponse> { let ep = match page { Some(p) => format!("/conversations?page={}", p), None => "/conversations".to_string() }; self.api().execute_json(self.api().get(&ep)).await }
+    pub async fn get_conversation(&self, conversation_id: i64) -> ApiResult<ConversationResponse> { self.api().execute_json(self.api().get(&format!("/conversations/{}", conversation_id))).await }
+    pub async fn create_thread(&self, forum_id: i64, title: &str, message: &str) -> ApiResult<ThreadResponse> { let req = serde_json::json!({"forum_id": forum_id, "title": title, "message": message}); self.api().execute_json(self.api().post("/threads").json(&req)).await }
+    pub async fn create_post(&self, thread_id: i64, message: &str) -> ApiResult<PostResponse> { let req = serde_json::json!({"thread_id": thread_id, "message": message}); self.api().execute_json(self.api().post("/posts").json(&req)).await }
+    pub async fn delete_thread(&self, thread_id: i64) -> ApiResult<Value> { self.api().execute(self.api().delete(&format!("/threads/{}", thread_id))).await?.json().await.map_err(ApiError::from) }
+    pub async fn delete_post(&self, post_id: i64) -> ApiResult<Value> { self.api().execute(self.api().delete(&format!("/posts/{}", post_id))).await?.json().await.map_err(ApiError::from) }
+    pub async fn follow_forum(&self, forum_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().post(&format!("/forums/{}/follow", forum_id))).await }
+    pub async fn unfollow_forum(&self, forum_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().delete(&format!("/forums/{}/follow", forum_id))).await }
+    pub async fn bump_thread(&self, thread_id: i64) -> ApiResult<ThreadResponse> { self.api().execute_json(self.api().post(&format!("/threads/{}/bump", thread_id))).await }
+    pub async fn star_thread(&self, thread_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().post(&format!("/threads/{}/star", thread_id))).await }
+    pub async fn unstar_thread(&self, thread_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().delete(&format!("/threads/{}/star", thread_id))).await }
+    pub async fn follow_thread(&self, thread_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().post(&format!("/threads/{}/follow", thread_id))).await }
+    pub async fn unfollow_thread(&self, thread_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().delete(&format!("/threads/{}/follow", thread_id))).await }
+    pub async fn like_post(&self, post_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().post(&format!("/posts/{}/like", post_id))).await }
+    pub async fn unlike_post(&self, post_id: i64) -> ApiResult<Value> { self.api().execute_json(self.api().delete(&format!("/posts/{}/like", post_id))).await }
+    pub async fn get_oauth_token(&self, grant_type: &str, client_id: &str, client_secret: &str, scope: Vec<&str>) -> ApiResult<TokenResponse> { let req = serde_json::json!({"grant_type": grant_type, "client_id": client_id, "client_secret": client_secret, "scope": scope}); self.api().execute_json(self.api().post("/oauth/token").json(&req)).await }
 }
