@@ -3,11 +3,12 @@ pub mod types;
 
 use crate::client::ApiClient;
 
-pub struct ForumApi {
+/// Market API wrapper.
+pub struct MarketApi {
     pub(crate) client: ApiClient,
 }
 
-impl ForumApi {
+impl MarketApi {
     pub fn new(client: ApiClient) -> Self {
         Self { client }
     }

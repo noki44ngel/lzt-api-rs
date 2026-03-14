@@ -1,297 +1,205 @@
-use crate::error::{ApiError, ApiResult};
-use crate::proxy::ProxyConfig;
-use crate::retry::{RetryConfig, RetryExecutor};
-use reqwest::{Client, RequestBuilder, Response};
+use crate::error::{Error, Result};
+use reqwest::{Client, Proxy, StatusCode};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::time::Duration;
+use tracing::{debug, warn};
 
-/// API Client builder with fluent interface
-#[derive(Debug, Default)]
-pub struct ClientBuilder {
-    base_url: Option<String>,
-    token: Option<String>,
-    proxy: Option<ProxyConfig>,
-    retry_config: Option<RetryConfig>,
-    timeout: Option<Duration>,
-    user_agent: Option<String>,
+const DEFAULT_MAX_RETRIES: u32 = 5;
+const INITIAL_BACKOFF: Duration = Duration::from_secs(2);
+const MAX_BACKOFF: Duration = Duration::from_secs(60);
+
+#[derive(Debug, Clone)]
+pub struct ApiClientBuilder {
+    base_url: String,
+    token: String,
+    proxy: Option<String>,
+    max_retries: u32,
+    timeout: Duration,
 }
 
-impl ClientBuilder {
-    pub fn new() -> Self {
-        ClientBuilder::default()
+impl ApiClientBuilder {
+    pub fn new(base_url: impl Into<String>, token: impl Into<String>) -> Self {
+        Self {
+            base_url: base_url.into(),
+            token: token.into(),
+            proxy: None,
+            max_retries: DEFAULT_MAX_RETRIES,
+            timeout: Duration::from_secs(30),
+        }
     }
 
-    pub fn base_url(mut self, url: impl Into<String>) -> Self {
-        self.base_url = Some(url.into());
-        self
-    }
-
-    pub fn token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(token.into());
-        self
-    }
-
+    /// HTTP/HTTPS/SOCKS5 прокси.
+    ///
+    /// ```ignore
+    /// builder.proxy("socks5://127.0.0.1:1080")
+    /// builder.proxy("http://user:pass@proxy.example.com:8080")
+    /// ```
     pub fn proxy(mut self, proxy_url: impl Into<String>) -> Self {
-        self.proxy = Some(ProxyConfig::new(proxy_url));
+        self.proxy = Some(proxy_url.into());
         self
     }
 
-    pub fn proxy_with_auth(
-        mut self,
-        proxy_url: impl Into<String>,
-        username: impl Into<String>,
-        password: impl Into<String>,
-    ) -> Self {
-        self.proxy = Some(ProxyConfig::new(proxy_url).with_auth(username, password));
-        self
-    }
-
-    pub fn retry(mut self, max_retries: u32) -> Self {
-        self.retry_config = Some(RetryConfig::default().with_max_retries(max_retries));
-        self
-    }
-
-    pub fn retry_config(mut self, config: RetryConfig) -> Self {
-        self.retry_config = Some(config);
+    pub fn max_retries(mut self, n: u32) -> Self {
+        self.max_retries = n;
         self
     }
 
     pub fn timeout(mut self, timeout: Duration) -> Self {
-        self.timeout = Some(timeout);
+        self.timeout = timeout;
         self
     }
 
-    pub fn user_agent(mut self, agent: impl Into<String>) -> Self {
-        self.user_agent = Some(agent.into());
-        self
-    }
+    pub fn build(self) -> Result<ApiClient> {
+        let mut builder = Client::builder()
+            .timeout(self.timeout)
+            .default_headers({
+                let mut h = reqwest::header::HeaderMap::new();
+                h.insert(
+                    reqwest::header::AUTHORIZATION,
+                    format!("Bearer {}", self.token)
+                        .parse()
+                        .expect("invalid token"),
+                );
+                h.insert(
+                    reqwest::header::ACCEPT,
+                    "application/json".parse().unwrap(),
+                );
+                h
+            });
 
-    /// Build configured API client
-    pub fn build(self) -> ApiResult<ApiClient> {
-        let base_url = self
-            .base_url
-            .ok_or_else(|| ApiError::Configuration("Base URL is required".to_string()))?;
-
-        let mut client_builder = Client::builder();
-
-        if let Some(proxy_config) = self.proxy {
-            let proxy = proxy_config.build()?;
-            client_builder = client_builder.proxy(proxy);
+        if let Some(proxy_url) = &self.proxy {
+            builder = builder.proxy(Proxy::all(proxy_url)?);
         }
-
-        if let Some(timeout) = self.timeout {
-            client_builder = client_builder.timeout(timeout);
-        }
-
-        let client = client_builder.build().map_err(ApiError::Network)?;
 
         Ok(ApiClient {
-            client,
-            base_url,
-            token: self.token,
-            retry_config: self.retry_config.unwrap_or_default(),
-            user_agent: self.user_agent.unwrap_or_else(|| "lzt-api/1.0".to_string()),
+            http: builder.build()?,
+            base_url: self.base_url,
+            max_retries: self.max_retries,
         })
     }
 }
 
-/// Main API client for HTTP requests
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ApiClient {
-    client: Client,
-    base_url: String,
-    token: Option<String>,
-    retry_config: RetryConfig,
-    user_agent: String,
+    pub(crate) http: Client,
+    pub(crate) base_url: String,
+    pub(crate) max_retries: u32,
 }
 
 impl ApiClient {
-    pub fn builder() -> ClientBuilder {
-        ClientBuilder::new()
+    pub fn new(base_url: impl Into<String>, token: impl Into<String>) -> Result<Self> {
+        ApiClientBuilder::new(base_url, token).build()
     }
 
-    pub fn new(base_url: impl Into<String>) -> Self {
-        ApiClient {
-            client: Client::new(),
-            base_url: base_url.into(),
-            token: None,
-            retry_config: RetryConfig::default(),
-            user_agent: "lzt-api/1.0".to_string(),
-        }
+    pub fn builder(base_url: impl Into<String>, token: impl Into<String>) -> ApiClientBuilder {
+        ApiClientBuilder::new(base_url, token)
     }
 
-    pub fn with_token(mut self, token: impl Into<String>) -> Self {
-        self.token = Some(token.into());
-        self
-    }
+    /// Выполняет запрос с авто-ретраем на 429/502/503.
+    pub async fn request<Q, B, R>(
+        &self,
+        method: &str,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<B>,
+    ) -> Result<R>
+    where
+        Q: Serialize + ?Sized,
+        B: Serialize + Clone,
+        R: DeserializeOwned,
+    {
+        let url = if path.starts_with("http") {
+            path.to_string()
+        } else {
+            format!(
+                "{}/{}",
+                self.base_url.trim_end_matches('/'),
+                path.trim_start_matches('/')
+            )
+        };
 
-    pub fn with_retry_config(mut self, config: RetryConfig) -> Self {
-        self.retry_config = config;
-        self
-    }
+        let mut backoff = INITIAL_BACKOFF;
 
-    pub fn base_url(&self) -> &str {
-        &self.base_url
-    }
+        for attempt in 0..=self.max_retries {
+            let mut req = match method {
+                "get" => self.http.get(&url),
+                "post" => self.http.post(&url),
+                "put" => self.http.put(&url),
+                "delete" => self.http.delete(&url),
+                "patch" => self.http.patch(&url),
+                other => panic!("unsupported HTTP method: {}", other),
+            };
 
-    pub fn get(&self, endpoint: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, endpoint);
-        let mut builder = self.client.get(&url);
-        builder = self.apply_headers(builder);
-        builder
-    }
-
-    pub fn post(&self, endpoint: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, endpoint);
-        let mut builder = self.client.post(&url);
-        builder = self.apply_headers(builder);
-        builder
-    }
-
-    pub fn put(&self, endpoint: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, endpoint);
-        let mut builder = self.client.put(&url);
-        builder = self.apply_headers(builder);
-        builder
-    }
-
-    pub fn delete(&self, endpoint: &str) -> RequestBuilder {
-        let url = format!("{}{}", self.base_url, endpoint);
-        let mut builder = self.client.delete(&url);
-        builder = self.apply_headers(builder);
-        builder
-    }
-
-    /// Execute request with retry logic
-    pub async fn execute(&self, builder: RequestBuilder) -> ApiResult<Response> {
-        let retry_executor = RetryExecutor::new(self.retry_config.clone());
-
-        retry_executor
-            .execute(|| async {
-                let request = builder.try_clone().ok_or_else(|| {
-                    ApiError::Configuration("Request cannot be cloned".to_string())
-                })?;
-
-                let response = request.send().await.map_err(ApiError::from)?;
-                self.handle_response(response).await
-            })
-            .await
-    }
-
-    /// Execute request and deserialize JSON response
-    pub async fn execute_json<T: DeserializeOwned>(&self, builder: RequestBuilder) -> ApiResult<T> {
-        let response = self.execute(builder).await?;
-        let text = response.text().await.map_err(ApiError::from)?;
-        serde_json::from_str(&text).map_err(ApiError::from)
-    }
-
-    /// Handle HTTP response and convert errors
-    async fn handle_response(&self, response: Response) -> ApiResult<Response> {
-        let status = response.status();
-
-        match status.as_u16() {
-            200..=299 => Ok(response),
-            401 => Err(ApiError::Unauthorized),
-            403 => Err(ApiError::Forbidden("Access denied".to_string())),
-            404 => Err(ApiError::NotFound("Resource not found".to_string())),
-            429 => {
-                let retry_after = response
-                    .headers()
-                    .get("Retry-After")
-                    .and_then(|v| v.to_str().ok())
-                    .and_then(|s| s.parse::<u64>().ok())
-                    .unwrap_or(1);
-                Err(ApiError::RateLimit { retry_after })
+            if let Some(q) = query {
+                req = req.query(q);
             }
-            400..=499 => {
-                let message = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Bad request".to_string());
-                Err(ApiError::BadRequest(message))
+            if let Some(ref b) = body {
+                req = req.json(b);
             }
-            500..=599 => {
-                let message = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Server error".to_string());
-                Err(ApiError::server_error(status, message))
+
+            debug!(attempt, method, url = %url, "sending request");
+
+            let resp = match req.send().await {
+                Ok(r) => r,
+                Err(e) if attempt < self.max_retries && e.is_timeout() => {
+                    warn!(attempt, "timeout, retrying in {:?}", backoff);
+                    tokio::time::sleep(backoff).await;
+                    backoff = (backoff * 2).min(MAX_BACKOFF);
+                    continue;
+                }
+                Err(e) => return Err(Error::Http(e)),
+            };
+
+            let status = resp.status();
+
+            if matches!(
+                status,
+                StatusCode::TOO_MANY_REQUESTS
+                    | StatusCode::BAD_GATEWAY
+                    | StatusCode::SERVICE_UNAVAILABLE
+            ) {
+                if attempt < self.max_retries {
+                    let retry_after = resp
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|v| v.to_str().ok())
+                        .and_then(|s| s.parse::<u64>().ok())
+                        .map(Duration::from_secs);
+
+                    let wait = retry_after.unwrap_or(backoff);
+                    warn!(
+                        attempt,
+                        status = status.as_u16(),
+                        "retryable status, waiting {:?}",
+                        wait
+                    );
+                    tokio::time::sleep(wait).await;
+                    backoff = (backoff * 2).min(MAX_BACKOFF);
+                    continue;
+                }
+
+                return Err(Error::RateLimited {
+                    attempts: self.max_retries + 1,
+                });
             }
-            _ => Err(ApiError::http(status, "Unknown error")),
-        }
-    }
 
-    /// Apply common headers to request
-    fn apply_headers(&self, mut builder: RequestBuilder) -> RequestBuilder {
-        builder = builder.header("User-Agent", &self.user_agent);
-        builder = builder.header("Accept", "application/json");
-        builder = builder.header("Content-Type", "application/json");
+            let status_code = status.as_u16();
+            let response_text = resp.text().await.map_err(Error::Http)?;
 
-        if let Some(token) = &self.token {
-            builder = builder.header("Authorization", format!("Bearer {}", token));
+            if !status.is_success() {
+                return Err(Error::Api {
+                    status: status_code,
+                    body: response_text,
+                });
+            }
+
+            let parsed: R = serde_json::from_str(&response_text).map_err(Error::Json)?;
+            return Ok(parsed);
         }
 
-        builder
-    }
-}
-
-/// Forum API client wrapper
-#[derive(Debug)]
-pub struct ForumClient {
-    client: ApiClient,
-}
-
-impl ForumClient {
-    pub fn new(client: ApiClient) -> Self {
-        ForumClient { client }
-    }
-
-    pub fn api(&self) -> &ApiClient {
-        &self.client
-    }
-}
-
-/// Market API client wrapper
-#[derive(Debug)]
-pub struct MarketClient {
-    client: ApiClient,
-}
-
-impl MarketClient {
-    pub fn new(client: ApiClient) -> Self {
-        MarketClient { client }
-    }
-
-    pub fn api(&self) -> &ApiClient {
-        &self.client
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_client_builder() {
-        let builder = ClientBuilder::new()
-            .base_url("https://api.example.com")
-            .token("test_token")
-            .proxy("http://127.0.0.1:8080")
-            .retry(3)
-            .timeout(Duration::from_secs(30))
-            .user_agent("test-agent/1.0");
-
-        assert!(builder.base_url.is_some());
-        assert!(builder.token.is_some());
-        assert!(builder.proxy.is_some());
-        assert!(builder.retry_config.is_some());
-        assert!(builder.timeout.is_some());
-        assert!(builder.user_agent.is_some());
-    }
-
-    #[test]
-    fn test_client_new() {
-        let client = ApiClient::new("https://api.example.com");
-        assert_eq!(client.base_url(), "https://api.example.com");
+        Err(Error::RateLimited {
+            attempts: self.max_retries + 1,
+        })
     }
 }
