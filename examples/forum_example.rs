@@ -2,8 +2,7 @@ use lzt_api::LolzteamClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let token = std::env::var("LZT_API_TOKEN")
-        .unwrap_or_else(|_| "your_token".to_string());
+    let token = std::env::var("LZT_API_TOKEN").unwrap_or_else(|_| "your_token".to_string());
 
     let client = LolzteamClient::new(&token);
 
